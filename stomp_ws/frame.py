@@ -31,6 +31,8 @@ class Frame:
 
     @staticmethod
     def unmarshall_single(data):
+        if data == '\n':
+            return Frame('', {}, None)
         lines = data.split(Byte['LF'])
 
         command = lines[0].strip()

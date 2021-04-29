@@ -18,6 +18,7 @@ class Client:
         self.ws.on_message = self._on_message
         self.ws.on_error = self._on_error
         self.ws.on_close = self._on_close
+        self.ws.on_ping = self._on_ping
 
         self.opened = False
 
@@ -52,8 +53,13 @@ class Client:
     def _on_error(self, error):
         logging.debug(error)
 
+    def _on_ping(self, message):
+        self.ws.send('pong')
+
     def _on_message(self, message):
         logging.debug("\n<<< " + str(message))
+        if message == '\n':
+            self.ws.on_ping(message)
         frame = Frame.unmarshall_single(message)
         _results = []
         if frame.command == "CONNECTED":
@@ -104,14 +110,14 @@ class Client:
         logging.debug("\n>>> " + out)
         self.ws.send(out)
 
-    def connect(self, login=None, passcode=None, headers=None, connectCallback=None, errorCallback=None,
-                timeout=0):
+    def connect(self, login=None, passcode=None, host=None, headers=None, connectCallback=None, 
+                errorCallback=None, pingCallback=None, timeout=0):
 
         logging.debug("Opening web socket...")
         self._connect(timeout)
 
         headers = headers if headers is not None else {}
-        headers['host'] = self.url
+        headers['host'] = host if host is not None else self.url
         headers['accept-version'] = VERSIONS
         headers['heart-beat'] = '10000,10000'
 
@@ -122,6 +128,8 @@ class Client:
 
         self._connectCallback = connectCallback
         self.errorCallback = errorCallback
+        if pingCallback is not None:
+            self.ws.on_ping = pingCallback
 
         self._transmit('CONNECT', headers)
 
