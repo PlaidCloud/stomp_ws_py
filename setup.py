@@ -22,4 +22,4 @@ setup(name='stomp_ws_py',
 
       zip_safe=False,
 
-      install_requires=['websocket_client>=0.57.0'])
+      install_requires=['websocket_client>=0.58.0'])
