@@ -50,7 +50,7 @@ class Client:
         logging.debug("Whoops! Lost connection to " + self.ws.url)
         self._clean_up()
 
-    def _on_error(self, ws):
+    def _on_error(self, ws, error):
         logging.debug(error)
 
     def _on_ping(self, ws):
