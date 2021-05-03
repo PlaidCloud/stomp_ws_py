@@ -42,21 +42,21 @@ class Client:
             if 0 < timeout < total_ms:
                 raise TimeoutError(f"Connection to {self.url} timed out")
 
-    def _on_open(self):
+    def _on_open(self, ws):
         self.opened = True
 
-    def _on_close(self):
+    def _on_close(self, ws):
         self.connected = False
         logging.debug("Whoops! Lost connection to " + self.ws.url)
         self._clean_up()
 
-    def _on_error(self, error):
+    def _on_error(self, ws, error):
         logging.debug(error)
 
-    def _on_ping(self, message):
+    def _on_ping(self, ws):
         self.ws.send('pong')
 
-    def _on_message(self, message):
+    def _on_message(self, ws, message):
         logging.debug("\n<<< " + str(message))
         if message == '\n':
             self.ws.on_ping(message)
