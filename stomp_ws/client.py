@@ -45,7 +45,7 @@ class Client:
     def _on_open(self, ws):
         self.opened = True
 
-    def _on_close(self, ws):
+    def _on_close(self, ws, close_status_code, close_msg):
         # prevent infinite wait on _connect if there is a connection error
         if not self.opened:
             self.opened = True
@@ -59,7 +59,7 @@ class Client:
             self.opened = True
         logging.debug(error)
 
-    def _on_ping(self, ws):
+    def _on_ping(self, ws, data):
         self.ws.send('pong')
 
     def _on_message(self, ws, message):
