@@ -46,11 +46,17 @@ class Client:
         self.opened = True
 
     def _on_close(self, ws):
+        # prevent infinite wait on _connect if there is a connection error
+        if not self.opened:
+            self.opened = True
         self.connected = False
         logging.debug("Whoops! Lost connection to " + self.ws.url)
         self._clean_up()
 
     def _on_error(self, ws, error):
+        # prevent infinite wait on _connect if there is a connection error
+        if not self.opened:
+            self.opened = True
         logging.debug(error)
 
     def _on_ping(self, ws):
