@@ -135,10 +135,10 @@ class Client:
 
     def connect(self, login=None, passcode=None, host=None, headers=None, connectCallback=None, 
                 errorCallback=None, pingCallback=None, connect_timeout=0,
-                ping_interval=0, ping_timeout=None):
+                ping_interval=0, ping_timeout=None, verify_ssl=True):
 
         logger.debug("Opening web socket...")
-        self._connect(connect_timeout, ping_interval, ping_timeout)
+        self._connect(connect_timeout, ping_interval, ping_timeout, verify_ssl=verify_ssl)
 
         headers = headers if headers is not None else {}
         headers['host'] = host if host is not None else self.url
