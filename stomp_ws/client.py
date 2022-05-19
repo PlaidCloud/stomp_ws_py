@@ -160,6 +160,10 @@ class Client:
         if headers is None:
             headers = {}
 
+        subscription_ids = list(self.subscriptions.keys())
+        for id in subscription_ids:
+            self.unsubscribe(id)
+
         self._transmit("DISCONNECT", headers)
         self.ws.on_close = None
         self.ws.close()
