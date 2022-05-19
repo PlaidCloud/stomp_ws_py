@@ -4,9 +4,11 @@ from threading import Thread
 from .frame import Frame
 import websocket
 import logging
+import ssl
 
-VERSIONS = '1.0,1.1'
+VERSIONS = '1.0,1.1,1.2'
 
+logger = logging.getLogger(__name__)
 
 class Client:
 
@@ -19,6 +21,7 @@ class Client:
         self.ws.on_error = self._on_error
         self.ws.on_close = self._on_close
         self.ws.on_ping = self._on_ping
+        self.ws.on_pong = self._on_pong
 
         self.opened = False
 
@@ -30,8 +33,15 @@ class Client:
         self._connectCallback = None
         self.errorCallback = None
 
-    def _connect(self, timeout=0):
-        thread = Thread(target=self.ws.run_forever)
+    def _connect(self, timeout=0, ping_interval=0, ping_timeout=None, verify_ssl=True):
+        thread = Thread(target=self.ws.run_forever, kwargs={
+            "ping_interval": ping_interval,
+            "ping_timeout": ping_timeout,
+            "sslopt": None if verify_ssl else {
+                "cert_reqs": ssl.CERT_NONE,
+                "check_hostname": False
+            }
+        })
         thread.daemon = True
         thread.start()
 
@@ -50,27 +60,34 @@ class Client:
         if not self.opened:
             self.opened = True
         self.connected = False
-        logging.debug("Whoops! Lost connection to " + self.ws.url)
+        logger.debug("Whoops! Lost connection to " + self.ws.url)
         self._clean_up()
 
     def _on_error(self, ws, error):
         # prevent infinite wait on _connect if there is a connection error
         if not self.opened:
             self.opened = True
-        logging.debug(error)
+        logger.debug(error)
 
     def _on_ping(self, ws, data):
         self.ws.send('pong')
 
+    def _on_pong(self, ws, data):
+        # Outgoing ping received
+        logger.debug(">>> PING")
+
     def _on_message(self, ws, message):
-        logging.debug("\n<<< " + str(message))
         if message == '\n':
-            self.ws.on_ping(message)
+            # Incoming ping
+            logger.debug("<<< PONG")
+            self.pingCallback(message)
+            return
+        logger.debug("\n<<< " + str(message))
         frame = Frame.unmarshall_single(message)
         _results = []
         if frame.command == "CONNECTED":
             self.connected = True
-            logging.debug("connected to server " + self.url)
+            logger.debug("connected to server " + self.url)
             if self._connectCallback is not None:
                 _results.append(self._connectCallback(frame))
         elif frame.command == "MESSAGE":
@@ -97,7 +114,7 @@ class Client:
                 _results.append(onreceive(frame))
             else:
                 info = "Unhandled received MESSAGE: " + str(frame)
-                logging.debug(info)
+                logger.debug(info)
                 _results.append(info)
         elif frame.command == 'RECEIPT':
             pass
@@ -106,26 +123,27 @@ class Client:
                 _results.append(self.errorCallback(frame))
         else:
             info = "Unhandled received MESSAGE: " + frame.command
-            logging.debug(info)
+            logger.debug(info)
             _results.append(info)
 
         return _results
 
     def _transmit(self, command, headers, body=None):
         out = Frame.marshall(command, headers, body)
-        logging.debug("\n>>> " + out)
+        logger.debug("\n>>> " + out)
         self.ws.send(out)
 
     def connect(self, login=None, passcode=None, host=None, headers=None, connectCallback=None, 
-                errorCallback=None, pingCallback=None, timeout=0):
+                errorCallback=None, pingCallback=None, connect_timeout=0,
+                ping_interval=0, ping_timeout=None):
 
-        logging.debug("Opening web socket...")
-        self._connect(timeout)
+        logger.debug("Opening web socket...")
+        self._connect(connect_timeout, ping_interval, ping_timeout)
 
         headers = headers if headers is not None else {}
         headers['host'] = host if host is not None else self.url
         headers['accept-version'] = VERSIONS
-        headers['heart-beat'] = '10000,10000'
+        headers['heart-beat'] = f'{ping_interval*1000},{ping_interval*1000}'
 
         if login is not None:
             headers['login'] = login
@@ -134,8 +152,7 @@ class Client:
 
         self._connectCallback = connectCallback
         self.errorCallback = errorCallback
-        if pingCallback is not None:
-            self.ws.on_ping = pingCallback
+        self.pingCallback = pingCallback
 
         self._transmit('CONNECT', headers)
 
