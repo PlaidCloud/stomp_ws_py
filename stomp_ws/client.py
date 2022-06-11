@@ -12,10 +12,12 @@ logger = logging.getLogger(__name__)
 
 class Client:
 
-    def __init__(self, url):
+    def __init__(self, url, header = None):
 
         self.url = url
+        self.header = header
         self.ws = websocket.WebSocketApp(self.url)
+        self.ws.header = self.header
         self.ws.on_open = self._on_open
         self.ws.on_message = self._on_message
         self.ws.on_error = self._on_error
