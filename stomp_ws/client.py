@@ -70,7 +70,7 @@ class Client:
         logger.debug(error)
 
     def _on_ping(self, ws, data):
-        self.ws.send('pong')
+        self.ws.send('\n')
 
     def _on_pong(self, ws, data):
         # Outgoing ping received
